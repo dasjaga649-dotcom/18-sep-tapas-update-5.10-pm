@@ -1,0 +1,726 @@
+import React, { useEffect } from 'react';
+import './index.css';
+import { renderFlights } from './travel/flights';
+import { renderHotels } from './travel/hotels';
+import { renderAttractions } from './travel/attractions';
+import { renderItinerary } from './travel/itinerary';
+
+const ChatApp: React.FC = () => {
+  useEffect(() => {
+    const chatContainer = document.getElementById('chat-container') as HTMLElement | null;
+    const introSection = document.getElementById('intro-section') as HTMLElement | null;
+    const toggleButton = document.getElementById('toggle-view') as HTMLElement | null;
+    const chatMessages = document.getElementById('chat-messages') as HTMLElement | null;
+    const chatForm = document.getElementById('chat-form') as HTMLFormElement | null;
+    const userPromptInput = document.getElementById('user-prompt') as HTMLInputElement | null;
+    const overflowButton = document.getElementById('overflow-button') as HTMLElement | null;
+    const overflowMenu = document.getElementById('overflow-menu') as HTMLElement | null;
+    const restartBtn = document.getElementById('restart-convo') as HTMLElement | null;
+    const downloadPdfBtn = document.getElementById('download-pdf') as HTMLElement | null;
+
+    let isDesktopView = false;
+    let sessionId = localStorage.getItem('tapasSessionId');
+    if (!sessionId) {
+      sessionId = 'user_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('tapasSessionId', sessionId);
+    }
+
+    const showModal = (text: string) => {
+      const mt = document.getElementById('modal-text');
+      const modal = document.getElementById('modal');
+      if (mt && modal) {
+        mt.innerText = text;
+        modal.classList.remove('hidden');
+      }
+    };
+
+    const addWelcomeMessage = () => {
+      if (!chatMessages) return;
+      // Avoid adding duplicate welcome message if static or previously added
+      const existing = chatMessages.querySelector('.welcome-message') || Array.from(chatMessages.querySelectorAll('div')).find(d => d.textContent && d.textContent.trim().includes('Hello! How can I help you plan your next trip'));
+      if (existing) return;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-start welcome-message';
+      wrapper.innerHTML = `
+        <div class="bg-white p-3 rounded-2xl shadow-sm max-w-[80%]">
+          <p class="text-gray-800 text-sm">Hello! How can I help you plan your next trip today?</p>
+        </div>`;
+      chatMessages.appendChild(wrapper);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    const restartConversation = () => {
+      if (!chatMessages) return;
+      chatMessages.innerHTML = '';
+      sessionId = 'user_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('tapasSessionId', sessionId);
+      addWelcomeMessage();
+      if (userPromptInput) userPromptInput.value = '';
+    };
+
+    const downloadChatPdf = async () => {
+      try {
+        const w: any = window as any;
+        if (!w.html2pdf) throw new Error('html2pdf not available');
+        if (!chatMessages) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'print-transcript-wrapper';
+        wrapper.style.background = '#ffffff';
+        wrapper.style.padding = '24pt';
+        wrapper.style.maxWidth = '800px';
+        wrapper.style.margin = '0 auto';
+        wrapper.innerHTML = `
+          <style>
+            .pt-header{display:flex;align-items:center;gap:12pt;margin-bottom:12pt}
+            .pt-title{font-size:16pt;font-weight:700;color:#111827;margin:0}
+            .pt-meta{font-size:9pt;color:#6b7280;margin:2pt 0 0}
+            .pt-logo{height:36pt;width:auto}
+            .pt-bubble{margin:10pt 0;padding:10pt 12pt;border-radius:12pt;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+            .pt-bot{background:#ffffff;border:1px solid #e5e7eb}
+            .pt-user{background:#3b82f6;color:#ffffff}
+            .pt-bubble img{max-width:100%;border-radius:8pt}
+          </style>
+          <div class="pt-header">
+            <img class="pt-logo" src="https://cdn.builder.io/api/v1/image/assets%2F82c0001c5b3640cb80e6ddfae3607779%2Fc6120727ebef4118a2235d13cbf9dfcb?format=webp&width=400" crossorigin="anonymous"/>
+            <div>
+              <h1 class="pt-title">AI⚡Hutech – Chat Transcript</h1>
+              <p class="pt-meta">Generated on ${new Date().toLocaleString()}</p>
+            </div>
+          </div>`;
+
+        const content = document.createElement('div');
+        content.className = 'pt-content';
+
+        Array.from(chatMessages.children).forEach((row) => {
+          const firstDiv = row.querySelector('div');
+          if (!firstDiv) return;
+          const isUser = row.classList.contains('justify-end');
+          const clone = firstDiv.cloneNode(true) as HTMLElement;
+          clone.style.overflow = 'visible';
+          clone.querySelectorAll('*').forEach(el => { (el as HTMLElement).style.overflow = 'visible'; });
+          clone.querySelectorAll('img').forEach(img => { img.setAttribute('crossorigin','anonymous'); (img as HTMLImageElement).style.maxWidth = '100%'; });
+
+          const wrap = document.createElement('div');
+          wrap.className = `pt-bubble ${isUser ? 'pt-user' : 'pt-bot'}`;
+          wrap.appendChild(clone);
+          content.appendChild(wrap);
+        });
+
+        wrapper.appendChild(content);
+        document.body.appendChild(wrapper);
+
+        const opt = {
+          margin: [20, 15, 20, 15],
+          filename: 'chat-transcript.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+        };
+
+        await w.html2pdf().from(wrapper).set(opt).save();
+        document.body.removeChild(wrapper);
+      } catch (e) {
+        console.error('PDF generation failed', e);
+        alert('Unable to generate PDF automatically in this browser.');
+      }
+    };
+
+    const markdownToHtml = (markdown: string) => {
+      const w: any = window as any;
+      if (w.marked && typeof w.marked.parse === 'function') {
+        return w.marked.parse(markdown);
+      }
+      return markdown;
+    };
+
+    const createMessageBubble = (text: string, isUser: boolean) => {
+      if (!chatMessages) return;
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+      const messageDiv = document.createElement('div');
+      if (isUser) {
+        messageDiv.className = 'bg-blue-500 text-white p-3 rounded-2xl shadow-md max-w-[80%]';
+        messageDiv.textContent = text;
+      } else {
+        messageDiv.className = 'bg-white text-gray-800 p-3 rounded-2xl shadow-md max-w-[80%] markdown-body';
+        messageDiv.innerHTML = markdownToHtml(text);
+      }
+      bubbleDiv.appendChild(messageDiv);
+      chatMessages.appendChild(bubbleDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    const createLoadingIndicator = () => {
+      if (!chatMessages) return null as unknown as HTMLElement;
+      const SIZE = 120; // px
+      const loaderDiv = document.createElement('div');
+      loaderDiv.className = 'chat-loader-row flex items-start';
+      // reserve space for the gif animation so layout doesn't jump
+      loaderDiv.innerHTML = `
+        <div class="chat-loader-wrapper">
+          <img class="chat-loader-image" src="https://cdn.builder.io/o/assets%2F6f93519000c74ba084c4626024227ad2%2Ff83c3507982c402ca39ea41163f1b897?alt=media&token=5afa3666-cc67-4932-aebc-b625d1beb44b&apiKey=6f93519000c74ba084c4626024227ad2" alt="loading" />
+        </div>
+      `;
+      chatMessages.appendChild(loaderDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      return loaderDiv;
+    };
+
+    const processMessage = (jsonResponse: string) => {
+      const data = JSON.parse(jsonResponse);
+      const placeholderRegex = /\[(flightData|hotelData|attractionsData|itineraryData)\]/g;
+      const text = typeof data.text === 'string' ? data.text : '';
+      const cleanedText = text ? text.replace(placeholderRegex, '').trim() : '';
+      if (cleanedText) createMessageBubble(cleanedText, false);
+      if ((data.dbData || data.itineraryData) && chatMessages) {
+        if (text.includes('[flightData]') && data.dbData) {
+          renderFlights(data.dbData, !isDesktopView, chatMessages);
+        } else if (text.includes('[hotelData]') && data.dbData) {
+          renderHotels(data.dbData, !isDesktopView, chatMessages);
+        } else if (text.includes('[attractionsData]') && data.dbData) {
+          renderAttractions(data.dbData, !isDesktopView, chatMessages);
+        } else if (data.itineraryData) {
+          renderItinerary(data.itineraryData, !isDesktopView, chatMessages);
+        }
+      }
+    };
+
+    const closeOverflow = () => {
+      if (overflowMenu) overflowMenu.classList.add('hidden');
+      if (overflowButton) overflowButton.setAttribute('aria-expanded', 'false');
+    };
+
+    if (overflowButton && overflowMenu) {
+      overflowButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = overflowMenu.classList.contains('hidden');
+        if (isHidden) {
+          overflowMenu.classList.remove('hidden');
+          overflowButton.setAttribute('aria-expanded', 'true');
+        } else {
+          closeOverflow();
+        }
+      });
+      const docClick = (e: any) => {
+        if (!overflowMenu.contains(e.target) && e.target !== overflowButton) closeOverflow();
+      };
+      document.addEventListener('click', docClick);
+    }
+
+    if (restartBtn) restartBtn.addEventListener('click', () => { closeOverflow(); restartConversation(); });
+    if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', () => { closeOverflow(); downloadChatPdf(); });
+
+    if (chatForm && userPromptInput && chatMessages) {
+      chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userPrompt = userPromptInput.value.trim();
+        if (userPrompt === '') return;
+        createMessageBubble(userPrompt, true);
+        userPromptInput.value = '';
+        const loader = createLoadingIndicator();
+        try {
+          const response = await fetch('http://localhost:3000/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, userPrompt })
+          });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const responseData = await response.json();
+          loader.remove();
+          processMessage(JSON.stringify(responseData));
+        } catch (error) {
+          console.error('API call failed:', error);
+          loader.remove();
+          createMessageBubble('Oops! Something went wrong. Please try again later.', false);
+        }
+      });
+
+      // Delegate clicks inside chat messages to handle external links reliably
+      const delegatedClickHandler = (evt: MouseEvent) => {
+        try {
+          const target = evt.target as HTMLElement | null;
+          if (!target) return;
+          // Find nearest anchor element from the click target
+          const anchor = (target.closest && (target.closest('a') as HTMLAnchorElement | null)) || null;
+          if (!anchor || !anchor.href) return;
+
+          // Only handle external links (absolute URLs) or links inside attractions/hotels containers
+          const href = anchor.getAttribute('href') || '';
+          const isExternal = /^https?:\/\//i.test(href);
+          const inAttractions = !!anchor.closest('#attractions-container');
+          const inHotels = !!anchor.closest('#hotels-container');
+
+          if (isExternal || inAttractions || inHotels) {
+            evt.preventDefault();
+            window.open(href, '_blank', 'noopener,noreferrer');
+          }
+        } catch (err) {
+          // ignore
+        }
+      };
+      chatMessages.addEventListener('click', delegatedClickHandler);
+    }
+
+    if (toggleButton && chatContainer && introSection && chatMessages) {
+      toggleButton.addEventListener('click', () => {
+        if (window.innerWidth < 768 && !isDesktopView) {
+          showModal('The desktop view is available on larger screens.');
+          return;
+        }
+        isDesktopView = !isDesktopView;
+        if (isDesktopView) {
+          chatContainer.classList.add('desktop-view', 'chat-centered');
+          chatContainer.classList.remove('phone-view', 'chat-right-align');
+          introSection.classList.add('hide-intro');
+          toggleButton.innerHTML = '<i class="fas fa-mobile-alt text-sm"></i>';
+        } else {
+          chatContainer.classList.remove('desktop-view', 'chat-centered');
+          chatContainer.classList.add('phone-view', 'chat-right-align');
+          introSection.classList.remove('hide-intro');
+          toggleButton.innerHTML = '<i class="fas fa-desktop text-sm"></i>';
+        }
+        const messages = Array.from(chatMessages.children);
+        chatMessages.innerHTML = '';
+        messages.forEach(msg => chatMessages.appendChild(msg));
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      });
+    }
+
+    const onLoad = () => {
+      if (!chatContainer || !introSection || !toggleButton) return;
+      if (window.innerWidth >= 768) {
+        chatContainer.classList.add('transition-width');
+        introSection.classList.add('transition-all');
+        isDesktopView = false;
+        chatContainer.classList.add('phone-view', 'chat-right-align');
+        chatContainer.classList.remove('desktop-view', 'chat-centered');
+        introSection.classList.remove('hide-intro');
+        toggleButton.innerHTML = '<i class="fas fa-desktop text-sm"></i>';
+      } else {
+        isDesktopView = false;
+        chatContainer.classList.add('phone-view');
+        introSection.classList.add('hide-intro');
+        toggleButton.innerHTML = '<i class="fas fa-desktop text-sm"></i>';
+      }
+
+      const createInlineFlightForm = () => {
+        if (!chatMessages) return;
+        const existing = chatMessages.querySelector('.inline-flight-form-row');
+        if (existing) existing.remove();
+        const row = document.createElement('div');
+        row.className = 'inline-flight-form-row flex items-start w-full';
+        row.innerHTML = `
+          <div class="bg-white p-4 rounded-2xl shadow-sm max-w-[90%] w-full flight-form-card">
+            <form class="flight-form space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div class="relative source-select">
+                  <label class="input-label text-xs text-gray-600 mb-1 block">From</label>
+                  <input name="source" class="source-input border rounded-md p-2 w-full" placeholder="From (e.g. JFK)" value="JFK" required autocomplete="off" />
+                  <div class="source-dropdown hidden absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto z-40">
+                    <div class="px-4 py-2 text-xs text-gray-500 font-semibold">POPULAR CITIES</div>
+                    <ul class="source-options"></ul>
+                  </div>
+                </div>
+                <div>
+                  <label class="input-label text-xs text-gray-600 mb-1 block">To</label>
+                  <input name="destination" class="border rounded-md p-2 w-full" placeholder="Destination (e.g. LAX)" value="LAX" required />
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start">
+                <div class="ios-picker-wrapper col-span-2">
+                  <label class="input-label text-xs text-gray-600 mb-1 block">Departure Date</label>
+                  <div class="ios-picker mt-2">
+                    <div class="picker-column" data-type="month"></div>
+                    <div class="picker-column" data-type="day"></div>
+                    <div class="picker-column" data-type="year"></div>
+                    <div class="picker-center-indicator"></div>
+                  </div>
+                  <div class="selected-date mt-2 text-sm text-gray-600" aria-live="polite"></div>
+                  <input type="hidden" name="departureDate" class="departure-date-hidden" value="" />
+                </div>
+                <div>
+                  <label class="input-label text-xs text-gray-600 mb-1 block">Adults</label>
+                  <input name="adults" type="number" min="1" class="border rounded-md p-2 w-full" value="1" required />
+                </div>
+              </div>
+              <div class="flex items-center gap-2 justify-end">
+                <button type="button" class="cancel-flight bg-gray-100 text-gray-700 px-3 py-1 rounded-md">Cancel</button>
+                <button type="submit" class="submit-flight bg-blue-500 text-white px-4 py-1 rounded-md">Search Flights</button>
+              </div>
+            </form>
+          </div>
+        `;
+        chatMessages.appendChild(row);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        initIosPickerV2(row);
+        initSourceDropdown(row);
+        const form = row.querySelector('.flight-form') as HTMLFormElement | null;
+        const cancelBtn = row.querySelector('.cancel-flight') as HTMLElement | null;
+        if (cancelBtn) cancelBtn.addEventListener('click', () => { row.remove(); });
+        if (form) {
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const todayStr = new Date().toISOString().slice(0,10);
+            const departureDate = getIosPickerDate(row) || (String(formData.get('departureDate')) || todayStr);
+            const payload = {
+              source: String(formData.get('source') || 'JFK'),
+              destination: String(formData.get('destination') || 'LAX'),
+              departureDate: departureDate,
+              adults: parseInt(String(formData.get('adults') || '1')) || 1
+            };
+            createMessageBubble(`Flight search: ${payload.source} → ${payload.destination} (${payload.departureDate}) - ${payload.adults} adult(s)`, true);
+            const loader = createLoadingIndicator();
+            try {
+              const resp = await fetch('http://localhost:8000/tools/fetchFlights', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
+              const json = await resp.json();
+              row.remove();
+              loader.remove();
+              const codeBlock = '```json\n' + JSON.stringify(json, null, 2) + '\n```';
+              createMessageBubble(codeBlock, false);
+            } catch (err) {
+              console.error('Flight fetch failed', err);
+              loader.remove();
+              createMessageBubble('Unable to fetch flights. Please try again later.', false);
+            }
+          });
+        }
+      };
+
+      const initIosPickerV2 = (row: HTMLElement, defaultDateStr?: string) => {
+        const picker = row.querySelector('.ios-picker') as HTMLElement | null;
+        if (!picker) return;
+        const monthCol = picker.querySelector('.picker-column[data-type="month"]') as HTMLElement;
+        const dayCol = picker.querySelector('.picker-column[data-type="day"]') as HTMLElement;
+        const yearCol = picker.querySelector('.picker-column[data-type="year"]') as HTMLElement;
+        const baseMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const monthsNum = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+        const baseDays = Array.from({length:31}, (_,i)=>String(i+1));
+        const minDate = new Date();
+        minDate.setHours(0,0,0,0);
+        const minYear = minDate.getFullYear();
+        const minMonth = minDate.getMonth();
+        const minDay = minDate.getDate();
+        const years: number[] = [];
+        for (let y=minYear; y<=minYear+50; y++) years.push(y);
+
+        const setupLoopingColumn = (
+          col: HTMLElement,
+          values: string[],
+          initialIndex: number,
+          onIndexChange: (i:number)=>void,
+          opts?: { durationMs?: number }
+        ) => {
+          const duration = Math.max(120, Math.min(1200, opts?.durationMs ?? 220));
+          col.style.overflowY = 'hidden';
+          col.style.position = 'relative';
+          col.innerHTML = values.map(v => `<div class="picker-item" style="position:absolute; left:0; right:0;">${v}</div>`).join('');
+          const items = Array.from(col.querySelectorAll('.picker-item')) as HTMLElement[];
+          const getItemH = () => items[0]?.offsetHeight || 44;
+          const centerOffset = () => (col.clientHeight - getItemH())/2;
+          let index = ((initialIndex % values.length) + values.length) % values.length;
+          let acc = 0;
+          const render = (animate=true) => {
+            const h = getItemH();
+            const c = centerOffset();
+            const L = values.length;
+            const half = Math.floor(L/2);
+            items.forEach((el, i) => {
+              let delta = i - index;
+              if (delta > half) delta -= L;
+              if (delta < -half) delta += L;
+              el.style.transition = animate ? `transform ${duration}ms ease-out` : 'none';
+              el.style.transform = `translateY(${c + delta * h}px)`;
+              el.classList.toggle('centered', delta === 0);
+            });
+            onIndexChange(index);
+          };
+          const step = (dir: number) => { index = (index + dir + values.length) % values.length; render(true); };
+          col.addEventListener('wheel', (e: any) => { e.preventDefault(); step(e.deltaY > 0 ? 1 : -1); }, { passive:false });
+          let touching = false, startY = 0;
+          const onMove = (y: number) => {
+            const h = getItemH();
+            acc += y;
+            while (Math.abs(acc) >= h) { step(acc > 0 ? -1 : 1); acc += acc > 0 ? -h : h; }
+          };
+          col.addEventListener('touchstart', (e: TouchEvent) => { touching = true; startY = e.touches[0].clientY; acc = 0; }, { passive:true });
+          col.addEventListener('touchmove', (e: TouchEvent) => { if (!touching) return; onMove(startY - e.touches[0].clientY); startY = e.touches[0].clientY; }, { passive:true });
+          col.addEventListener('touchend', () => { touching = false; acc = 0; });
+          col.addEventListener('mousedown', (e: MouseEvent) => { touching = true; startY = e.clientY; acc = 0; e.preventDefault(); });
+          window.addEventListener('mousemove', (e: MouseEvent) => { if (!touching) return; onMove(startY - e.clientY); startY = e.clientY; });
+          window.addEventListener('mouseup', () => { touching = false; acc = 0; });
+          requestAnimationFrame(() => render(false));
+          return { getIndex: () => index, setIndex: (i: number, animate=false) => { index = ((i % values.length)+values.length)%values.length; render(animate); } };
+        };
+
+        const selectedTextEl = row.querySelector('.selected-date') as HTMLElement | null;
+        const hiddenInput = row.querySelector('.departure-date-hidden') as HTMLInputElement | null;
+        let def: {year:number;month:number;day:number} | null = null;
+        if (defaultDateStr) {
+          const p = defaultDateStr.split('-');
+          if (p.length===3) def = { year: parseInt(p[0],10), month: parseInt(p[1],10), day: parseInt(p[2],10) };
+        }
+        const t = new Date();
+        let yIndex = years.indexOf(def?.year ?? t.getFullYear());
+        if (yIndex < 0) yIndex = Math.max(0, Math.min(years.length-1, years.indexOf(t.getFullYear())));
+        let mIndex = (def ? def.month-1 : t.getMonth());
+        let dIndex = (def ? def.day-1 : t.getDate()-1);
+
+        const monthApi = setupLoopingColumn(monthCol, baseMonths, mIndex, (i)=>{ mIndex = i; clampDay(); updateUi(); }, { durationMs: 420 });
+        const dayApi = setupLoopingColumn(dayCol, baseDays as any, dIndex, (i)=>{ dIndex = i; updateUi(); });
+
+        const yearApi = setupLoopingColumn(yearCol, years.map(String), yIndex, (i)=>{ yIndex = i; clampDay(); updateUi(); }, { durationMs: 420 });
+
+        const clampDay = () => {
+          const max = new Date(years[yIndex], mIndex+1, 0).getDate();
+          if (dIndex+1 > max) { dIndex = max-1; dayApi.setIndex(dIndex, false); }
+        };
+
+        let _adjusting = false;
+        const updateUi = () => {
+          if (_adjusting) return;
+          const ySel = years[yIndex];
+          const mSel = mIndex;
+          const dSel = dIndex + 1;
+          const candidate = new Date(ySel, mSel, dSel);
+          if (candidate < minDate) {
+            _adjusting = true;
+            if (ySel === minYear) {
+              if (mSel < minMonth) {
+                mIndex = minMonth; monthApi.setIndex(mIndex, true); clampDay();
+                if (dIndex + 1 < minDay) { dIndex = minDay - 1; dayApi.setIndex(dIndex, true); }
+              } else if (mSel === minMonth && dSel < minDay) {
+                dIndex = minDay - 1; dayApi.setIndex(dIndex, true);
+              }
+            }
+            _adjusting = false;
+          }
+          const value = `${years[yIndex]}-${monthsNum[mIndex]}-${String(dIndex+1).padStart(2,'0')}`;
+          const display = `${baseMonths[mIndex]} ${String(dIndex+1).padStart(2,'0')}, ${years[yIndex]}`;
+          if (selectedTextEl) selectedTextEl.textContent = display;
+          if (hiddenInput) hiddenInput.value = value;
+        };
+
+        requestAnimationFrame(() => {
+          updateUi();
+        });
+      };
+
+      const getIosPickerDate = (row: HTMLElement) => {
+        const hidden = row.querySelector('.departure-date-hidden') as HTMLInputElement | null;
+        if (hidden && hidden.value) return hidden.value;
+        const picker = row.querySelector('.ios-picker') as HTMLElement | null;
+        if (!picker) return null;
+        const monthCol = picker.querySelector('.picker-column[data-type="month"]') as HTMLElement;
+        const dayCol = picker.querySelector('.picker-column[data-type="day"]') as HTMLElement;
+        const yearCol = picker.querySelector('.picker-column[data-type="year"]') as HTMLElement;
+        const item = monthCol.querySelector('.picker-item') as HTMLElement | null;
+        if (!item) return null;
+        const itemHeight = item.offsetHeight;
+        const monthIdxRaw = Math.round(monthCol.scrollTop / itemHeight);
+        const dayIdxRaw = Math.round(dayCol.scrollTop / itemHeight);
+        const yearIdx = Math.round(yearCol.scrollTop / itemHeight);
+        const baseMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const baseDays = Array.from({length:31}, (_,i)=>String(i+1));
+        const monthIdx = ((monthIdxRaw % baseMonths.length) + baseMonths.length) % baseMonths.length;
+        const dayIdx = ((dayIdxRaw % baseDays.length) + baseDays.length) % baseDays.length;
+        const monthsNum = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+        const currentYear = new Date().getFullYear();
+        const minYear = currentYear;
+        const years = Array.from({length:51}, (_,i)=>minYear + i);
+        const y = years[yearIdx] || years[0];
+        const m = monthsNum[monthIdx] || '01';
+        const d = String((dayIdx+1)).padStart(2,'0');
+        return `${y}-${m}-${d}`;
+      };
+
+      const initSourceDropdown = (row: HTMLElement) => {
+        const input = row.querySelector('.source-input') as HTMLInputElement | null;
+        const dropdown = row.querySelector('.source-dropdown') as HTMLElement | null;
+        const listEl = row.querySelector('.source-options') as HTMLElement | null;
+        if (!input || !dropdown || !listEl) return;
+        const popular = [
+          { label: 'New York, USA', code: 'JFK', sub: 'John F. Kennedy International Airport' },
+          { label: 'Los Angeles, USA', code: 'LAX', sub: 'Los Angeles International Airport' },
+          { label: 'Mumbai, India', code: 'BOM', sub: 'Chhatrapati Shivaji International Airport' },
+          { label: 'New Delhi, India', code: 'DEL', sub: 'Indira Gandhi International Airport' },
+          { label: 'Bangkok, Thailand', code: 'BKK', sub: 'Suvarnabhumi Airport' },
+          { label: 'Bengaluru, India', code: 'BLR', sub: 'Kempegowda International Airport' },
+          { label: 'Pune, India', code: 'PNQ', sub: 'Pune Airport' },
+          { label: 'San Francisco, USA', code: 'SFO', sub: 'San Francisco International Airport' }
+        ];
+        const render = (items: typeof popular) => {
+          listEl.innerHTML = items.map(it => `
+            <li class="source-option px-4 py-3 hover:bg-gray-50 cursor-pointer flex justify-between items-start">
+              <div>
+                <div class="font-medium text-gray-800">${it.label}</div>
+                <div class="text-xs text-gray-500">${it.sub}</div>
+              </div>
+              <div class="text-sm text-gray-600 font-semibold ml-4 flex-shrink-0">${it.code}</div>
+            </li>
+          `).join('');
+        };
+        render(popular);
+        const open = () => dropdown.classList.remove('hidden');
+        const close = () => dropdown.classList.add('hidden');
+        input.addEventListener('focus', open);
+        input.addEventListener('input', () => {
+          const q = input.value.trim().toLowerCase();
+          if (!q) { render(popular); return; }
+          const filtered = popular.filter(p => p.label.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+          render(filtered.length ? filtered : popular);
+          open();
+        });
+        listEl.addEventListener('click', (ev) => {
+          const li = (ev.target as HTMLElement).closest('.source-option') as HTMLElement | null;
+          if (!li) return;
+          const codeEl = li.querySelector('.text-sm') as HTMLElement | null;
+          const selCode = codeEl ? codeEl.textContent?.trim() : null;
+          if (selCode) {
+            input.value = selCode;
+            (input as any).dataset.selectedLabel = (li.querySelector('.font-medium') as HTMLElement)?.textContent || '';
+          }
+          close();
+          input.focus();
+        });
+        document.addEventListener('click', (e) => { if (!row.contains(e.target as Node)) close(); });
+      };
+
+      const attachQuickReplyListeners = () => {
+        const buttons = document.querySelectorAll('.quick-reply-button');
+        buttons.forEach(btn => {
+          const b = btn as HTMLElement & { _qrHandler?: any };
+          if (b._qrHandler) return;
+          const handler = () => {
+            const label = (b.dataset.label || b.textContent || '').trim();
+            if (label.toLowerCase().startsWith('find a flight')) { createInlineFlightForm(); return; }
+            if (userPromptInput) { userPromptInput.value = label; userPromptInput.focus(); }
+          };
+          btn.addEventListener('click', handler);
+          b._qrHandler = handler;
+        });
+      };
+
+      try {
+        attachQuickReplyListeners();
+        document.addEventListener('DOMContentLoaded', attachQuickReplyListeners);
+      } catch (e) { console.warn('Failed to attach quick reply listeners', e); }
+
+      addWelcomeMessage();
+    };
+
+    window.addEventListener('load', onLoad);
+    // Also run once immediately in case 'load' has already fired
+    onLoad();
+
+    return () => {
+      window.removeEventListener('load', onLoad);
+    };
+  }, []);
+
+  return (
+    <>
+      <nav className="bg-white shadow-sm p-4 sticky top-0 z-50">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F6f93519000c74ba084c4626024227ad2%2F161f61559b844c2b95a6c7af386a3097?format=webp&width=800" alt="Tapas logo" className="nav-brand-logo w-8 h-8 object-contain" />
+            <span className="text-xl font-bold text-gray-800">Tapas Travel AI</span>
+          </div>
+          <div className="flex items-center space-x-4">
+            <a href="/" className="text-gray-600 hover:text-blue-500 font-medium transition duration-300">Features</a>
+            <a href="/" className="text-gray-600 hover:text-blue-500 font-medium transition duration-300">About</a>
+            <a href="/" className="text-gray-600 hover:text-blue-500 font-medium transition duration-300">Contact</a>
+          </div>
+        </div>
+      </nav>
+      <main className="flex-grow flex items-center justify-center p-4 md:p-8 overflow-hidden relative">
+        <div id="intro-section" className="w-full md:w-1/2 lg:w-1/3 p-8 bg-white rounded-2xl shadow-lg flex-shrink-0 flex flex-col space-y-6 transition-all duration-700 ease-in-out absolute md:relative z-10">
+          <h1 className="text-4xl font-extrabold text-gray-800 leading-tight">Your Personal Travel Agent.</h1>
+          <p className="text-lg text-gray-600">
+            Meet Tapas, your AI travel companion. Tapas is designed to simplify your travel planning by providing real-time data on flights, hotels, and local attractions.
+          </p>
+          <p className="text-md text-gray-500">
+            Whether you're looking for the best flight deals, a cozy hotel for your stay, or exciting places to visit, Tapas is here to help. Just start a conversation and let's plan your next adventure!
+          </p>
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center space-x-3 text-gray-700">
+              <i className="fas fa-plane text-blue-500 text-xl" />
+              <span className="font-semibold">Live Flight Data</span>
+            </div>
+            <div className="flex items-center space-x-3 text-gray-700">
+              <i className="fas fa-hotel text-blue-500 text-xl" />
+              <span className="font-semibold">Hotel Booking & Info</span>
+            </div>
+            <div className="flex items-center space-x-3 text-gray-700">
+              <i className="fas fa-map-marker-alt text-blue-500 text-xl" />
+              <span className="font-semibold">Attractions & Itineraries</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="chat-container" className="bg-gray-200 phone-view flex-grow flex flex-col overflow-hidden transition-all duration-700 ease-in-out shadow-2xl chat-right-align z-20">
+          <div className="relative bg-white shadow-md rounded-t-2xl p-4 flex items-center justify-between z-10">
+            <div className="chat-title-centered">AI⚡Hutech</div>
+            <div className="flex items-center space-x-3">
+              <div className="bg-blue-500 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                <img src="https://cdn.builder.io/api/v1/image/assets%2F6f93519000c74ba084c4626024227ad2%2F161f61559b844c2b95a6c7af386a3097?format=webp&width=800" alt="Tapas logo" className="w-8 h-8 rounded-full object-contain" />
+              </div>
+              <div>
+                <span className="text-lg font-semibold text-gray-800">Tapas</span>
+                <p className="text-sm text-gray-500">Online</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 relative">
+              <button id="toggle-view" className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors duration-200">
+                <i className="fas fa-desktop text-sm" />
+              </button>
+              <button id="overflow-button" className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors duration-200" aria-haspopup="true" aria-expanded={false} aria-controls="overflow-menu" title="More options">
+                <i className="fas fa-ellipsis-v text-sm" />
+              </button>
+              <div id="overflow-menu" className="hidden absolute right-0 top-11 w-52 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-30">
+                <button id="restart-convo" className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Restart conversation</button>
+              </div>
+            </div>
+          </div>
+          <div id="chat-messages" className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50">
+            <div className="flex flex-col items-start space-y-3">
+              <div className="bg-white p-3 rounded-2xl shadow-sm max-w-[80%] welcome-message">
+                <p className="text-gray-800 text-sm">Hello! How can I help you plan your next trip?</p>
+              </div>
+              <div className="quick-actions flex flex-wrap gap-2 max-w-[80%] mt-2" aria-label="Suggested actions">
+                <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Find a flight?">Find a flight?</button>
+                <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Search for hotels?">Search for hotels?</button>
+                <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Explore attractions in a city?">Explore attractions in a city?</button>
+                <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Generate a travel itinerary?">Generate a travel itinerary?</button>
+              </div>
+            </div>
+          </div>
+          <form id="chat-form" className="p-4 bg-white rounded-b-2xl">
+            <div className="relative chat-input-wrapper">
+              <input type="text" id="user-prompt" placeholder="Ask Tapas about your travel plans..." className="chat-input w-full p-3 pl-4 pr-14 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 text-sm" />
+              <button type="submit" className="send-button absolute right-3 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Send message">
+                <i className="fas fa-paper-plane" />
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <div id="modal" className="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+        <div className="bg-white p-6 rounded-xl shadow-lg w-80 text-center">
+          <p id="modal-text" className="mb-4 text-gray-700"></p>
+          <button onClick={() => { const m = document.getElementById('modal'); if (m) m.classList.add('hidden'); }} className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Close</button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default ChatApp;
