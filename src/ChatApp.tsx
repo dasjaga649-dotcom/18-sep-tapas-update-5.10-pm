@@ -600,7 +600,6 @@ const ChatApp: React.FC = () => {
           if (b._qrHandler) return;
           const handler = () => {
             const label = (b.dataset.label || b.textContent || '').trim();
-            if (label.toLowerCase().startsWith('find a flight')) { createInlineFlightForm(); return; }
             if (userPromptInput) { userPromptInput.value = label; userPromptInput.focus(); }
           };
           btn.addEventListener('click', handler);
@@ -695,7 +694,6 @@ const ChatApp: React.FC = () => {
                 <p className="text-gray-800 text-sm">Hello! How can I help you plan your next trip?</p>
               </div>
               <div className="quick-actions flex flex-wrap gap-2 max-w-[80%] mt-2" aria-label="Suggested actions">
-                <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Find a flight?">Find a flight?</button>
                 <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Search for hotels?">Search for hotels?</button>
                 <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Explore attractions in a city?">Explore attractions in a city?</button>
                 <button type="button" className="quick-reply-button px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700 hover:bg-blue-50 transition" data-label="Generate a travel itinerary?">Generate a travel itinerary?</button>
