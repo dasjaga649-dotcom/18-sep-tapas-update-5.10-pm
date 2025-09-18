@@ -137,8 +137,54 @@ const renderDailyPlan = (dailyPlan: any[]) => {
   return `<div class="p-4 space-y-4">${dailyCards}</div>`;
 };
 
+const getItineraryAttractionIcon = (type?: string) => {
+  if (type === 'eatery') return 'fas fa-utensils';
+  if (type === 'attraction') return 'fas fa-landmark';
+  if (type === 'attraction_product') return 'fas fa-route';
+  return 'fas fa-map-marker-alt';
+};
+
+const getExploreAttractionCardHtml = (item: any) => {
+  const imageUrl = (item?.imageLinks && item.imageLinks.length > 0 ? item.imageLinks[0] : (item?.imagelinks && item.imagelinks[0])) || imageComingSoon;
+  const name = safeText(item?.name);
+  const description = safeText(item?.description || item?.overview);
+  const rating = safeText(item?.rating);
+  const websiteRaw = item?.link || item?.website || item?.url || '';
+  let website = websiteRaw || '';
+  if (website && !/^https?:\/\//i.test(website)) website = 'https://' + website;
+  const lat = item?.location?.lat ?? item?.location?.latitude ?? item?.lat ?? item?.latitude;
+  const lon = item?.location?.lon ?? item?.location?.longitude ?? item?.lon ?? item?.longitude ?? item?.location?.lng ?? item?.lng;
+  const mapLink = (lat !== undefined && lon !== undefined && lat !== '' && lon !== '') ? `https://www.google.com/maps?q=${lat},${lon}` : '';
+  const ratingHtml = rating ? `<div class="attraction-rating flex items-center space-x-1"><span>${rating}</span><i class="fas fa-star text-yellow-400"></i></div>` : '';
+  const typeIcon = getItineraryAttractionIcon(item?.type);
+
+  return `
+    <div class="travel-card flex-none snap-center">
+      <img class="travel-card-image" src="${imageUrl}" alt="${name}">
+      <div class="travel-card-info-top">
+        <div class="attraction-icon bg-gray-900 text-white">
+          <i class="${typeIcon}"></i>
+        </div>
+        ${ratingHtml}
+      </div>
+      <div class="travel-card-title text-white">
+        <h4 class="text-xl font-bold flex items-center space-x-2">
+          <span>${name}</span>
+          ${mapLink ? `<a href="${mapLink}" target="_blank" class="text-blue-300 hover:text-blue-500" aria-label="Open in Google Maps"><i class="fas fa-map-marker-alt"></i></a>` : ''}
+        </h4>
+      </div>
+      <div class="travel-card-overlay">
+        <div class="travel-card-details text-gray-200">
+          ${description ? `<p class="text-sm line-clamp-3">${description}</p>` : ''}
+          ${website ? `<a href="${website}" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline text-sm font-medium mt-2 block">Visit Website</a>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 const renderExploreMore = (exploreMoreData: any[]) => {
-  const cards = (exploreMoreData || []).map(getCardHtml).join('');
+  const cards = (exploreMoreData || []).map(getExploreAttractionCardHtml).join('');
   return `
     <div class="p-6">
       <h3 class="text-xl font-bold mb-4 text-gray-800">Explore More</h3>
