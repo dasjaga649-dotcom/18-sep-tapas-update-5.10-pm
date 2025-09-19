@@ -309,80 +309,315 @@ const ChatApp: React.FC = () => {
         if (!chatMessages) return;
         const existing = chatMessages.querySelector('.inline-flight-form-row');
         if (existing) existing.remove();
+        const uid = String(Date.now());
         const row = document.createElement('div');
         row.className = 'inline-flight-form-row flex items-start w-full';
         row.innerHTML = `
-          <div class="bg-white p-4 rounded-2xl shadow-sm max-w-[90%] w-full flight-form-card">
-            <form class="flight-form space-y-3">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div class="relative source-select">
-                  <label class="input-label text-xs text-gray-600 mb-1 block">From</label>
-                  <input name="source" class="source-input border rounded-md p-2 w-full" placeholder="From (e.g. JFK)" value="JFK" required autocomplete="off" />
-                  <div class="source-dropdown hidden absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto z-40">
-                    <div class="px-4 py-2 text-xs text-gray-500 font-semibold">POPULAR CITIES</div>
-                    <ul class="source-options"></ul>
+          <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-[90%] w-full border border-gray-200">
+            <h3 class="text-2xl font-bold mb-4 text-center text-gray-800">Find Your Flight</h3>
+            <form class="flight-form space-y-6">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="relative">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">From</label>
+                  <input type="text" id="source-${uid}" name="source" value="JFK" placeholder="Source" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" required />
+                  <div id="source-suggestions-${uid}" class="autocomplete-list hidden"></div>
+                  <div id="source-popular-${uid}" class="popular-cities-list hidden"></div>
+                </div>
+                <div class="relative">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                  <input type="text" id="destination-${uid}" name="destination" value="LAX" placeholder="Destination" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" required />
+                  <div id="destination-suggestions-${uid}" class="autocomplete-list hidden"></div>
+                  <div id="destination-popular-${uid}" class="popular-cities-list hidden"></div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="relative">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Departure Date</label>
+                  <div id="date-picker-input-${uid}" class="mt-1 flex items-center justify-between cursor-pointer w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    <span id="display-date-${uid}" class="text-gray-700"></span>
+                    <i class="fas fa-calendar text-gray-400"></i>
+                  </div>
+                  <input type="hidden" id="departureDate-${uid}" name="departureDate" />
+
+                  <div id="date-picker-modal-${uid}" class="absolute z-10 mt-2 left-0 right-0 p-4 bg-yellow-400 rounded-2xl shadow-lg transition-all duration-300 scale-95 opacity-0 pointer-events-none origin-top">
+                    <div class="flex justify-center mb-2"><div class="h-1 w-10 bg-yellow-600 rounded-full"></div></div>
+                    <div id="calendar-view-${uid}" class="transition-opacity duration-300 ease-in-out opacity-100 pointer-events-auto">
+                      <div class="flex justify-between items-center text-sm font-medium text-yellow-800 mb-2">
+                        <span class="w-1/3 text-center">Day</span>
+                        <span class="w-1/3 text-center">Month</span>
+                        <span class="w-1/3 text-center">Year</span>
+                      </div>
+                      <div class="grid grid-cols-3 gap-2 h-48 overflow-hidden relative">
+                        <div id="selection-highlight-${uid}" class="absolute h-10 w-full bg-yellow-600 rounded-full transition-transform duration-200 ease-in-out pointer-events-none z-0"></div>
+                        <ul id="day-list-${uid}" class="calendar-scroller text-center space-y-2 text-yellow-800 text-lg overflow-y-scroll snap-y snap-mandatory py-10 z-10"></ul>
+                        <ul id="month-list-${uid}" class="calendar-scroller text-center space-y-2 text-yellow-800 text-lg overflow-y-scroll snap-y snap-mandatory py-10 z-10"></ul>
+                        <ul id="year-list-${uid}" class="calendar-scroller text-center space-y-2 text-yellow-800 text-lg overflow-y-scroll snap-y snap-mandatory py-10 z-10"></ul>
+                      </div>
+                    </div>
+                    <div id="final-date-view-${uid}" class="absolute inset-0 flex flex-col justify-center items-center text-center opacity-0 pointer-events-none transition-opacity duration-300">
+                      <p class="text-4xl font-bold text-yellow-800" id="final-date-display-${uid}"></p>
+                      <button type="button" id="change-date-button-${uid}" class="mt-4 px-6 py-2 bg-yellow-600 text-yellow-900 font-semibold rounded-full text-sm">Change Date</button>
+                    </div>
                   </div>
                 </div>
                 <div>
-                  <label class="input-label text-xs text-gray-600 mb-1 block">To</label>
-                  <input name="destination" class="border rounded-md p-2 w-full" placeholder="Destination (e.g. LAX)" value="LAX" required />
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Adults</label>
+                  <input type="number" id="adults-${uid}" name="adults" value="1" min="1" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" required />
                 </div>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start">
-                <div class="ios-picker-wrapper col-span-2">
-                  <label class="input-label text-xs text-gray-600 mb-1 block">Departure Date</label>
-                  <div class="ios-picker mt-2">
-                    <div class="picker-column" data-type="month"></div>
-                    <div class="picker-column" data-type="day"></div>
-                    <div class="picker-column" data-type="year"></div>
-                    <div class="picker-center-indicator"></div>
-                  </div>
-                  <div class="selected-date mt-2 text-sm text-gray-600" aria-live="polite"></div>
-                  <input type="hidden" name="departureDate" class="departure-date-hidden" value="" />
-                </div>
-                <div>
-                  <label class="input-label text-xs text-gray-600 mb-1 block">Adults</label>
-                  <input name="adults" type="number" min="1" class="border rounded-md p-2 w-full" value="1" required />
-                </div>
+
+              <div class="pt-2 flex flex-col sm:flex-row-reverse justify-end items-center gap-3">
+                <button type="submit" class="submit-flight w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">Search Flights</button>
+                <button type="button" class="cancel-flight w-full sm:w-auto px-6 py-2 text-gray-700 bg-gray-200 font-semibold rounded-xl shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition">Cancel</button>
               </div>
-              <div class="flex items-center gap-2 justify-end">
-                <button type="button" class="cancel-flight bg-gray-100 text-gray-700 px-3 py-1 rounded-md">Cancel</button>
-                <button type="submit" class="submit-flight bg-blue-500 text-white px-4 py-1 rounded-md">Search Flights</button>
-              </div>
+              <div id="message-box-${uid}" class="mt-2 p-3 text-center rounded-xl transition-opacity duration-300 opacity-0 hidden"></div>
             </form>
           </div>
         `;
         chatMessages.appendChild(row);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        initIosPickerV2(row);
-        initSourceDropdown(row);
+
+        // Helpers and constants
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const AIRPORT_API_URL = 'http://localhost:8000/tools/searchAirport';
+        const FLIGHTS_API_URL = 'http://localhost:8000/tools/fetchFlights';
+
+        const qs = (sel: string) => row.querySelector(sel) as HTMLElement | null;
+        const qsi = (sel: string) => row.querySelector(sel) as HTMLInputElement | null;
+
+        const dateInput = qs(`#date-picker-input-${uid}`);
+        const dateModal = qs(`#date-picker-modal-${uid}`) as HTMLElement | null;
+        const hiddenDateInput = qsi(`#departureDate-${uid}`);
+        const displayDateSpan = qs(`#display-date-${uid}`) as HTMLElement | null;
+        const dayList = qs(`#day-list-${uid}`) as HTMLElement | null;
+        const monthList = qs(`#month-list-${uid}`) as HTMLElement | null;
+        const yearList = qs(`#year-list-${uid}`) as HTMLElement | null;
+        const calendarView = qs(`#calendar-view-${uid}`);
+        const finalDateView = qs(`#final-date-view-${uid}`);
+        const finalDateDisplay = qs(`#final-date-display-${uid}`) as HTMLElement | null;
+        const changeDateButton = qs(`#change-date-button-${uid}`);
+        const sourceInput = qsi(`#source-${uid}`)!;
+        const sourceSuggestions = qs(`#source-suggestions-${uid}`)!;
+        const sourcePopular = qs(`#source-popular-${uid}`)!;
+        const destinationInput = qsi(`#destination-${uid}`)!;
+        const destinationSuggestions = qs(`#destination-suggestions-${uid}`)!;
+        const destinationPopular = qs(`#destination-popular-${uid}`)!;
+        const messageBox = qs(`#message-box-${uid}`) as HTMLElement | null;
+
+        let selectedDay: number, selectedMonth: number, selectedYear: number;
+        const today = new Date();
+        const currentDay = today.getDate();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        selectedDay = currentDay; selectedMonth = currentMonth; selectedYear = currentYear;
+
+        const selectionHighlight = qs(`#selection-highlight-${uid}`) as HTMLElement | null;
+        const calendarGrid = dateModal ? (dateModal.querySelector('.grid') as HTMLElement | null) : null;
+
+        const updateDateFields = () => {
+          if (!hiddenDateInput || !displayDateSpan) return;
+          const monthFormatted = String(selectedMonth + 1).padStart(2,'0');
+          const dayFormatted = String(selectedDay).padStart(2,'0');
+          const dateString = `${selectedYear}-${monthFormatted}-${dayFormatted}`;
+          hiddenDateInput.value = dateString;
+          displayDateSpan.textContent = dateString;
+        };
+
+        const populateDayList = (year: number, month: number) => {
+          if (!dayList) return;
+          dayList.innerHTML = '';
+          const numDays = new Date(year, month + 1, 0).getDate();
+          const startDay = (year === currentYear && month === currentMonth) ? currentDay : 1;
+          for (let i=0;i<2;i++){ const e=document.createElement('li'); e.className='py-2 px-1'; dayList.appendChild(e); }
+          for (let i=startDay;i<=numDays;i++){ const li=document.createElement('li'); li.textContent=String(i); li.className='py-2 px-1 cursor-pointer snap-center'; (li as any).dataset.value=String(i); dayList.appendChild(li); }
+          for (let i=0;i<2;i++){ const e=document.createElement('li'); e.className='py-2 px-1'; dayList.appendChild(e); }
+        };
+        const populateMonthList = (year: number) => {
+          if (!monthList) return;
+          monthList.innerHTML='';
+          const startMonth = (year === currentYear) ? currentMonth : 0;
+          for (let i=0;i<2;i++){ const e=document.createElement('li'); e.className='py-2 px-1'; monthList.appendChild(e); }
+          for (let i=startMonth;i<monthNames.length;i++){ const li=document.createElement('li'); li.textContent=monthNames[i]; li.className='py-2 px-1 cursor-pointer snap-center'; (li as any).dataset.value=String(i); monthList.appendChild(li); }
+          for (let i=0;i<2;i++){ const e=document.createElement('li'); e.className='py-2 px-1'; monthList.appendChild(e); }
+        };
+        const populateYearList = () => {
+          if (!yearList) return;
+          yearList.innerHTML='';
+          const endYear = currentYear + 10;
+          for (let i=0;i<2;i++){ const e=document.createElement('li'); e.className='py-2 px-1'; yearList.appendChild(e); }
+          for (let i=currentYear;i<=endYear;i++){ const li=document.createElement('li'); li.textContent=String(i); li.className='py-2 px-1 cursor-pointer snap-center'; (li as any).dataset.value=String(i); yearList.appendChild(li); }
+          for (let i=0;i<2;i++){ const e=document.createElement('li'); e.className='py-2 px-1'; yearList.appendChild(e); }
+        };
+
+        const updateHighlightPosition = () => {
+          if (!selectionHighlight || !calendarGrid || !dayList) return;
+          const selectedDayEl = dayList.querySelector(`[data-value="${selectedDay}"]`) as HTMLElement | null;
+          if (selectedDayEl) {
+            const gridRect = calendarGrid.getBoundingClientRect();
+            const dayRect = selectedDayEl.getBoundingClientRect();
+            const topPosition = dayRect.top - gridRect.top;
+            selectionHighlight.style.transform = `translateY(${topPosition}px)`;
+          }
+        };
+
+        const updateSelectedClasses = () => {
+          if (!dayList || !monthList || !yearList) return;
+          dayList.querySelectorAll('li').forEach(li=>li.classList.remove('selected-text'));
+          monthList.querySelectorAll('li').forEach(li=>li.classList.remove('selected-text'));
+          yearList.querySelectorAll('li').forEach(li=>li.classList.remove('selected-text'));
+          const dEl = dayList.querySelector(`[data-value="${selectedDay}"]`) as HTMLElement | null; if (dEl) dEl.classList.add('selected-text');
+          const mEl = monthList.querySelector(`[data-value="${selectedMonth}"]`) as HTMLElement | null; if (mEl) mEl.classList.add('selected-text');
+          const yEl = yearList.querySelector(`[data-value="${selectedYear}"]`) as HTMLElement | null; if (yEl) yEl.classList.add('selected-text');
+        };
+
+        const scrollToSelected = () => {
+          const dEl = dayList?.querySelector(`[data-value="${selectedDay}"]`) as HTMLElement | null; dEl?.scrollIntoView({behavior:'smooth', block:'center'});
+          const mEl = monthList?.querySelector(`[data-value="${selectedMonth}"]`) as HTMLElement | null; mEl?.scrollIntoView({behavior:'smooth', block:'center'});
+          const yEl = yearList?.querySelector(`[data-value="${selectedYear}"]`) as HTMLElement | null; yEl?.scrollIntoView({behavior:'smooth', block:'center'});
+        };
+
+        const handleScroll = (list: any, setter: (v:number)=>void) => {
+          clearTimeout(list.scrollTimeout);
+          list.scrollTimeout = setTimeout(() => {
+            const listItems = Array.from(list.children).filter((li: any) => li.dataset && li.dataset.value);
+            if (!listItems.length) return;
+            let closestItem = listItems[0];
+            let minDistance = Infinity;
+            const listRect = list.getBoundingClientRect();
+            listItems.forEach((item: any) => {
+              const rect = item.getBoundingClientRect();
+              const distance = Math.abs((rect.top + rect.bottom)/2 - (listRect.top + listRect.bottom)/2);
+              if (distance < minDistance) { minDistance = distance; closestItem = item; }
+            });
+            if (closestItem && closestItem.dataset.value) {
+              const value = parseInt(closestItem.dataset.value, 10);
+              setter(value);
+              updateDateFields(); updateHighlightPosition(); updateSelectedClasses();
+            }
+          }, 50);
+        };
+
+        const handleClick = (event: any, setter: (v:number)=>void, updateCallback: ()=>void) => {
+          const li = event.target.closest('li');
+          if (li && li.dataset.value) {
+            const value = parseInt(li.dataset.value, 10);
+            setter(value);
+            updateCallback();
+            updateDateFields(); updateHighlightPosition(); updateSelectedClasses(); scrollToSelected(); animateToFinalView();
+          }
+        };
+
+        const openModal = () => {
+          if (!dateModal) return; dateModal.classList.remove('scale-95','opacity-0','pointer-events-none'); dateModal.classList.add('scale-100','opacity-100','pointer-events-auto'); updateHighlightPosition(); updateSelectedClasses(); scrollToSelected();
+        };
+        const closeModal = () => { if (!dateModal) return; dateModal.classList.remove('scale-100','opacity-100','pointer-events-auto'); dateModal.classList.add('scale-95','opacity-0','pointer-events-none'); };
+        const animateToFinalView = () => {
+          if (!calendarView || !finalDateView || !finalDateDisplay) return;
+          calendarView.classList.remove('opacity-100','pointer-events-auto');
+          calendarView.classList.add('opacity-0','pointer-events-none');
+          finalDateDisplay.textContent = `${selectedDay} ${monthNames[selectedMonth]} ${selectedYear}`;
+          finalDateView.classList.remove('opacity-0','pointer-events-none');
+          finalDateView.classList.add('opacity-100','pointer-events-auto');
+        };
+        const resetCalendarView = () => {
+          if (!calendarView || !finalDateView) return;
+          finalDateView.classList.remove('opacity-100','pointer-events-auto');
+          finalDateView.classList.add('opacity-0','pointer-events-none');
+          calendarView.classList.remove('opacity-0','pointer-events-none');
+          calendarView.classList.add('opacity-100','pointer-events-auto');
+          scrollToSelected();
+        };
+
+        // initialize lists and defaults
+        populateYearList(); populateMonthList(selectedYear); populateDayList(selectedYear, selectedMonth); updateDateFields();
+
+        // listeners
+        dateInput?.addEventListener('click', (e) => { e.stopPropagation(); openModal(); });
+        changeDateButton?.addEventListener('click', resetCalendarView);
+        document.addEventListener('click', (e) => { if (dateModal && !dateModal.contains(e.target as Node) && dateInput && !dateInput.contains(e.target as Node)) closeModal(); });
+        dayList?.addEventListener('scroll', () => handleScroll(dayList, (val)=>{ selectedDay = val; if (selectedYear===currentYear && selectedMonth===currentMonth && selectedDay<currentDay) selectedDay=currentDay; }));
+        dayList?.addEventListener('click', (e) => handleClick(e, (val)=>{ selectedDay = val; if (selectedYear===currentYear && selectedMonth===currentMonth && selectedDay<currentDay) selectedDay=currentDay; }, ()=>{}));
+        monthList?.addEventListener('scroll', () => handleScroll(monthList, (val)=>{ selectedMonth = val; if (selectedYear===currentYear && selectedMonth<currentMonth) selectedMonth=currentMonth; if (selectedYear===currentYear && selectedMonth===currentMonth && selectedDay<currentDay) selectedDay=currentDay; populateDayList(selectedYear, selectedMonth); }));
+        monthList?.addEventListener('click', (e) => handleClick(e, (val)=>{ selectedMonth = val; if (selectedYear===currentYear && selectedMonth<currentMonth) selectedMonth=currentMonth; if (selectedYear===currentYear && selectedMonth===currentMonth && selectedDay<currentDay) selectedDay=currentDay; }, ()=>{ populateDayList(selectedYear, selectedMonth); }));
+        yearList?.addEventListener('scroll', () => handleScroll(yearList, (val)=>{ selectedYear = val; populateMonthList(selectedYear); if (selectedYear===currentYear && selectedMonth<currentMonth) { selectedMonth=currentMonth; selectedDay=currentDay; } populateDayList(selectedYear, selectedMonth); }));
+        yearList?.addEventListener('click', (e) => handleClick(e, (val)=>{ selectedYear = val; if (selectedYear===currentYear && selectedMonth<currentMonth) { selectedMonth=currentMonth; selectedDay=currentDay; } }, ()=>{ populateMonthList(selectedYear); populateDayList(selectedYear, selectedMonth); }));
+
+        // popular cities & autocomplete
+        const popularCities = [
+          { name: 'New Delhi', city: 'New Delhi, Delhi', iata: 'DEL' },
+          { name: 'Mumbai', city: 'Mumbai, Maharashtra', iata: 'BOM' },
+          { name: 'Bengaluru', city: 'Bengaluru, Karnataka', iata: 'BLR' },
+          { name: 'Chennai', city: 'Chennai, Tamil Nadu', iata: 'MAA' },
+          { name: 'Kolkata', city: 'Kolkata, West Bengal', iata: 'CCU' },
+          { name: 'Hyderabad', city: 'Hyderabad, Telangana', iata: 'HYD' }
+        ];
+        let autocompleteTimeout: any;
+        const toggleSuggestions = (inputName: 'source'|'destination', showPopular: boolean) => {
+          const popularEl = (inputName==='source') ? sourcePopular : destinationPopular;
+          const suggestionsEl = (inputName==='source') ? sourceSuggestions : destinationSuggestions;
+          sourcePopular.classList.add('hidden'); destinationPopular.classList.add('hidden'); sourceSuggestions.classList.add('hidden'); destinationSuggestions.classList.add('hidden');
+          if (showPopular) { populatePopularCities(inputName); popularEl.classList.remove('hidden'); } else { suggestionsEl.classList.remove('hidden'); }
+        };
+        const populatePopularCities = (inputName: 'source'|'destination') => {
+          const listEl = (inputName==='source') ? sourcePopular : destinationPopular;
+          listEl.innerHTML = '';
+          const title = document.createElement('div'); title.textContent='Popular Cities'; title.className='py-2 px-4 text-gray-400 text-sm font-semibold border-b border-gray-200'; listEl.appendChild(title);
+          popularCities.forEach(city => {
+            const item = document.createElement('div'); item.className='popular-city-item'; item.innerHTML = `<div>${city.name}, <span class="font-medium">${city.city}</span></div><div class="text-sm text-gray-500">${city.iata}</div>`;
+            item.addEventListener('click', () => { const input = (inputName==='source' ? sourceInput : destinationInput); if (input) input.value = `${city.name} (${city.iata})`; listEl.classList.add('hidden'); });
+            listEl.appendChild(item);
+          });
+        };
+        const fetchAndDisplayAirports = async (inputEl: HTMLInputElement, suggestionsEl: HTMLElement, searchString: string) => {
+          if (searchString.length < 2) { suggestionsEl.innerHTML=''; suggestionsEl.classList.add('hidden'); return; }
+          if (inputEl === sourceInput) { sourcePopular.classList.add('hidden'); } else { destinationPopular.classList.add('hidden'); }
+          try {
+            const response = await fetch(AIRPORT_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ searchString }) });
+            if (!response.ok) throw new Error(`API error ${response.status}`);
+            const airports = await response.json();
+            suggestionsEl.innerHTML='';
+            if (airports && airports.length > 0) {
+              airports.forEach((airport: any) => {
+                const item = document.createElement('div'); item.className='autocomplete-item'; item.innerHTML = `<div>${airport.name}</div><div class="text-sm text-gray-500">${airport.city}, ${airport.country}</div>`;
+                item.addEventListener('click', () => { inputEl.value = `${airport.name} (${airport.iata})`; suggestionsEl.classList.add('hidden'); });
+                suggestionsEl.appendChild(item);
+              });
+              suggestionsEl.classList.remove('hidden');
+            } else { suggestionsEl.classList.add('hidden'); }
+          } catch (e) { console.error('Failed to fetch airport suggestions', e); suggestionsEl.classList.add('hidden'); }
+        };
+        sourceInput.addEventListener('input', (e: any) => { clearTimeout(autocompleteTimeout); autocompleteTimeout = setTimeout(()=>{ fetchAndDisplayAirports(sourceInput, sourceSuggestions, e.target.value); }, 300); });
+        sourceInput.addEventListener('focus', () => toggleSuggestions('source', true));
+        destinationInput.addEventListener('input', (e: any) => { clearTimeout(autocompleteTimeout); autocompleteTimeout = setTimeout(()=>{ fetchAndDisplayAirports(destinationInput, destinationSuggestions, e.target.value); }, 300); });
+        destinationInput.addEventListener('focus', () => toggleSuggestions('destination', true));
+        document.addEventListener('click', (e) => {
+          if (!row.contains(e.target as Node)) return;
+          if (!sourceInput.contains(e.target as Node) && !sourceSuggestions.contains(e.target as Node) && !sourcePopular.contains(e.target as Node)) { sourceSuggestions.classList.add('hidden'); sourcePopular.classList.add('hidden'); }
+          if (!destinationInput.contains(e.target as Node) && !destinationSuggestions.contains(e.target as Node) && !destinationPopular.contains(e.target as Node)) { destinationSuggestions.classList.add('hidden'); destinationPopular.classList.add('hidden'); }
+        });
+
+        // Submit
         const form = row.querySelector('.flight-form') as HTMLFormElement | null;
         const cancelBtn = row.querySelector('.cancel-flight') as HTMLElement | null;
         if (cancelBtn) cancelBtn.addEventListener('click', () => { row.remove(); });
         if (form) {
           form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(form);
-            const todayStr = new Date().toISOString().slice(0,10);
-            const departureDate = getIosPickerDate(row) || (String(formData.get('departureDate')) || todayStr);
             const payload = {
-              source: String(formData.get('source') || 'JFK'),
-              destination: String(formData.get('destination') || 'LAX'),
-              departureDate: departureDate,
-              adults: parseInt(String(formData.get('adults') || '1')) || 1
+              source: sourceInput.value,
+              destination: destinationInput.value,
+              departureDate: (hiddenDateInput && hiddenDateInput.value) || new Date().toISOString().slice(0,10),
+              adults: parseInt((row.querySelector(`#adults-${uid}`) as HTMLInputElement).value || '1', 10)
             };
             createMessageBubble(`Flight search: ${payload.source} → ${payload.destination} (${payload.departureDate}) - ${payload.adults} adult(s)`, true);
             const loader = createLoadingIndicator();
             try {
-              const resp = await fetch('http://localhost:8000/tools/fetchFlights', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              });
+              const resp = await fetch(FLIGHTS_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
               if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
               const json = await resp.json();
-              row.remove();
               loader.remove();
+              row.remove();
               const codeBlock = '```json\n' + JSON.stringify(json, null, 2) + '\n```';
               createMessageBubble(codeBlock, false);
             } catch (err) {
