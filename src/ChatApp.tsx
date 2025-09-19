@@ -153,7 +153,6 @@ const ChatApp: React.FC = () => {
 
     const createLoadingIndicator = () => {
       if (!chatMessages) return null as unknown as HTMLElement;
-      const SIZE = 120; // px
       const loaderDiv = document.createElement('div');
       loaderDiv.className = 'chat-loader-row flex items-start';
       // reserve space for the gif animation so layout doesn't jump
