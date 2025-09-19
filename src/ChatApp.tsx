@@ -402,7 +402,6 @@ const ChatApp: React.FC = () => {
         const destinationInput = qsi(`#destination-${uid}`)!;
         const destinationSuggestions = qs(`#destination-suggestions-${uid}`)!;
         const destinationPopular = qs(`#destination-popular-${uid}`)!;
-        const messageBox = qs(`#message-box-${uid}`) as HTMLElement | null;
 
         let selectedDay: number, selectedMonth: number, selectedYear: number;
         const today = new Date();
