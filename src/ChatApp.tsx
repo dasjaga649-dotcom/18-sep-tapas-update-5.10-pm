@@ -630,33 +630,6 @@ const ChatApp: React.FC = () => {
       };
 
 
-      const getIosPickerDate = (row: HTMLElement) => {
-        const hidden = row.querySelector('.departure-date-hidden') as HTMLInputElement | null;
-        if (hidden && hidden.value) return hidden.value;
-        const picker = row.querySelector('.ios-picker') as HTMLElement | null;
-        if (!picker) return null;
-        const monthCol = picker.querySelector('.picker-column[data-type="month"]') as HTMLElement;
-        const dayCol = picker.querySelector('.picker-column[data-type="day"]') as HTMLElement;
-        const yearCol = picker.querySelector('.picker-column[data-type="year"]') as HTMLElement;
-        const item = monthCol.querySelector('.picker-item') as HTMLElement | null;
-        if (!item) return null;
-        const itemHeight = item.offsetHeight;
-        const monthIdxRaw = Math.round(monthCol.scrollTop / itemHeight);
-        const dayIdxRaw = Math.round(dayCol.scrollTop / itemHeight);
-        const yearIdx = Math.round(yearCol.scrollTop / itemHeight);
-        const baseMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const baseDays = Array.from({length:31}, (_,i)=>String(i+1));
-        const monthIdx = ((monthIdxRaw % baseMonths.length) + baseMonths.length) % baseMonths.length;
-        const dayIdx = ((dayIdxRaw % baseDays.length) + baseDays.length) % baseDays.length;
-        const monthsNum = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-        const currentYear = new Date().getFullYear();
-        const minYear = currentYear;
-        const years = Array.from({length:51}, (_,i)=>minYear + i);
-        const y = years[yearIdx] || years[0];
-        const m = monthsNum[monthIdx] || '01';
-        const d = String((dayIdx+1)).padStart(2,'0');
-        return `${y}-${m}-${d}`;
-      };
 
       const initSourceDropdown = (row: HTMLElement) => {
         const input = row.querySelector('.source-input') as HTMLInputElement | null;
