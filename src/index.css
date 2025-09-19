@@ -45,8 +45,9 @@ main { height: 100%; padding: 2rem; }
 .travel-card-info-top { display: flex; justify-content: space-between; align-items: center; position: absolute; top: 0; left: 0; width: 100%; padding: 0.75rem; z-index: 30; }
 .travel-card-title { position: absolute; bottom: 1rem; left: 1rem; transition: opacity 0.3s ease-in-out; z-index: 25; }
 .travel-card-details { position: absolute; bottom: 1rem; padding: 0 1rem; opacity: 0; transform: translateY(100%); transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; z-index: 25; }
-.travel-card:hover .travel-card-title { opacity: 0; }
-.travel-card:hover .travel-card-details { opacity: 1; transform: translateY(0); }
+.travel-card:hover .travel-card-title { opacity: 0; pointer-events: none; }
+.travel-card-details { pointer-events: none; }
+.travel-card:hover .travel-card-details { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
 .attraction-icon { background-color: rgba(255, 255, 255, 0.3); border-radius: 9999px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; }
 .attraction-icon i { font-size: 1rem; margin-right: 0.25rem; }
@@ -100,6 +101,14 @@ p { margin-bottom: 0.5rem; }
 .chat-loader-image { width: 120px; height: 120px; display: block; object-fit: contain; }
 @media (max-width: 640px) { .chat-loader-wrapper, .chat-loader-image { width: 88px !important; height: 88px !important; } }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Flight form helpers */
+.calendar-scroller { -ms-overflow-style: none; scrollbar-width: none; }
+.calendar-scroller::-webkit-scrollbar { display: none; }
+.selected-text { color: #000; font-weight: 700; }
+.autocomplete-list, .popular-cities-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; max-height: 200px; overflow-y: auto; background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); margin-top: 0.25rem; border: 1px solid #e5e7eb; }
+.autocomplete-item, .popular-city-item { padding: 0.75rem 1rem; cursor: pointer; transition: background-color 0.3s ease; }
+.autocomplete-item:hover, .popular-city-item:hover { background-color: #f3f4f6; }
 
 @media (max-width: 767px) { #intro-section { display: none; } #chat-container { width: 100%; height: 100vh; border: none; box-shadow: none; border-radius: 0; max-width: none; } }
 #chat-messages { overflow-x: hidden; }

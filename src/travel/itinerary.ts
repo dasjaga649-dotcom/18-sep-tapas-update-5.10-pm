@@ -137,8 +137,54 @@ const renderDailyPlan = (dailyPlan: any[]) => {
   return `<div class="p-4 space-y-4">${dailyCards}</div>`;
 };
 
+const getItineraryAttractionIcon = (type?: string) => {
+  if (type === 'eatery') return 'fas fa-utensils';
+  if (type === 'attraction') return 'fas fa-landmark';
+  if (type === 'attraction_product') return 'fas fa-route';
+  return 'fas fa-map-marker-alt';
+};
+
+const getExploreAttractionCardHtml = (item: any) => {
+  const imageUrl = (item?.imageLinks && item.imageLinks.length > 0 ? item.imageLinks[0] : (item?.imagelinks && item.imagelinks[0])) || imageComingSoon;
+  const name = safeText(item?.name);
+  const description = safeText(item?.description || item?.overview);
+  const rating = safeText(item?.rating);
+  const websiteRaw = item?.link || item?.website || item?.url || '';
+  let website = websiteRaw || '';
+  if (website && !/^https?:\/\//i.test(website)) website = 'https://' + website;
+  const lat = item?.location?.lat ?? item?.location?.latitude ?? item?.lat ?? item?.latitude;
+  const lon = item?.location?.lon ?? item?.location?.longitude ?? item?.lon ?? item?.longitude ?? item?.location?.lng ?? item?.lng;
+  const mapLink = (lat !== undefined && lon !== undefined && lat !== '' && lon !== '') ? `https://www.google.com/maps?q=${lat},${lon}` : '';
+  const ratingHtml = rating ? `<div class="attraction-rating flex items-center space-x-1"><span>${rating}</span><i class="fas fa-star text-yellow-400"></i></div>` : '';
+  const typeIcon = getItineraryAttractionIcon(item?.type);
+
+  return `
+    <div class="travel-card flex-none snap-center">
+      <img class="travel-card-image" src="${imageUrl}" alt="${name}">
+      <div class="travel-card-info-top">
+        <div class="attraction-icon bg-gray-900 text-white">
+          <i class="${typeIcon}"></i>
+        </div>
+        ${ratingHtml}
+      </div>
+      <div class="travel-card-title text-white">
+        <h4 class="text-xl font-bold flex items-center space-x-2">
+          <span>${name}</span>
+          ${mapLink ? `<a href="${mapLink}" target="_blank" class="text-blue-300 hover:text-blue-500" aria-label="Open in Google Maps"><i class="fas fa-map-marker-alt"></i></a>` : ''}
+        </h4>
+      </div>
+      <div class="travel-card-overlay">
+        <div class="travel-card-details text-gray-200">
+          ${description ? `<p class="text-sm line-clamp-3">${description}</p>` : ''}
+          ${website ? `<a href="${website}" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline text-sm font-medium mt-2 block">Visit Website</a>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 const renderExploreMore = (exploreMoreData: any[]) => {
-  const cards = (exploreMoreData || []).map(getCardHtml).join('');
+  const cards = (exploreMoreData || []).map(getExploreAttractionCardHtml).join('');
   return `
     <div class="p-6">
       <h3 class="text-xl font-bold mb-4 text-gray-800">Explore More</h3>
@@ -221,25 +267,80 @@ const renderFlightsSection = (flightSuggestions: any) => {
   `;
 };
 
+const getAmenityIcon = (amenity: string) => {
+  const iconMap: Record<string, string> = {
+    "Hot tub": "fas fa-hot-tub",
+    "Beach access": "fas fa-umbrella-beach",
+    "Spa": "fas fa-spa",
+    "Pool": "fas fa-swimming-pool",
+    "Kid-friendly": "fas fa-child",
+    "Casino": "fas fa-dice",
+    "Restaurant": "fas fa-utensils",
+    "Bar": "fas fa-cocktail",
+    "Room service": "fas fa-bell",
+    "Fitness center": "fas fa-dumbbell",
+    "Outdoor pool": "fas fa-swimming-pool",
+    "Free breakfast": "fas fa-coffee",
+    "Air conditioning": "fas fa-fan",
+    "Airport shuttle": "fas fa-shuttle-van",
+    "Crib": "fas fa-baby-carriage",
+    "Pet-friendly": "fas fa-dog",
+    "Smoke-free": "fas fa-smoking-ban",
+    "Washer": "fas fa-washer",
+    "Wheelchair accessible": "fas fa-wheelchair",
+    "Free Wi-Fi": "fas fa-wifi"
+  };
+  return iconMap[amenity] || 'fas fa-concierge-bell';
+};
+
 const renderHotelsSection = (hotelRecommendations: any) => {
   const cheapestHotels = hotelRecommendations?.cheapest || [];
   const highestRatedHotels = hotelRecommendations?.highestRated || [];
 
   const hotelCard = (hotel: any) => {
-    const imageUrl = hotel?.imageLinks && hotel.imageLinks.length > 0 ? hotel.imageLinks[0] : imageComingSoon;
+    const imageUrl = (hotel?.imageLinks && hotel.imageLinks.length > 0 ? hotel.imageLinks[0] : (hotel?.imagelinks && hotel.imagelinks[0])) || imageComingSoon;
+    const price = safeText(hotel?.price);
+    const rating = safeText(hotel?.rating);
+    const name = safeText(hotel?.name);
+    const websiteRaw = hotel?.link || hotel?.website || hotel?.url || '';
+    let website = websiteRaw || '';
+    if (website && !/^https?:\/\//i.test(website)) website = 'https://' + website;
+    const description = safeText(hotel?.description || hotel?.desc || hotel?.overview);
+    const lat = hotel?.location?.lat ?? hotel?.location?.latitude ?? hotel?.lat ?? hotel?.latitude;
+    const lon = hotel?.location?.lon ?? hotel?.location?.longitude ?? hotel?.lon ?? hotel?.longitude ?? hotel?.location?.lng ?? hotel?.lng;
+    const mapLink = (lat !== undefined && lon !== undefined && lat !== '' && lon !== '') ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` : '';
+    const amenitiesHtml = !hotel?.amenities || hotel.amenities[0] == null ? [] : hotel.amenities.map((amenity: string) => `
+      <span class="flex items-center space-x-2 text-xs text-gray-200">
+        <i class="${getAmenityIcon(amenity)}"></i>
+        <span>${amenity}</span>
+      </span>
+    `).join('');
+    const priceHtml = price ? `<div class=\"attraction-icon bg-gray-900 text-white flex items-center\"><span class=\"currency-symbol\">₹</span><span>${price}</span></div>` : '';
+    const ratingHtml = rating ? `<div class=\"attraction-rating flex items-center space-x-1\"><span>${rating}</span><i class=\"fas fa-star text-yellow-400\"></i></div>` : '';
+
     return `
       <div class="travel-card flex-none snap-center">
-        <img class="travel-card-image" src="${imageUrl}" alt="${hotel?.name || ''}">
+        <img class="travel-card-image" src="${imageUrl}" alt="${name}">
         <div class="travel-card-info-top">
-          <div class="attraction-icon bg-gray-900 text-white flex items-center space-x-1">
-            <span class="currency-symbol">₹</span><span>${hotel?.price ?? ''}</span>
-          </div>
-          <div class="attraction-rating flex items-center space-x-1">
-            <i class="fas fa-star text-yellow-400"></i><span>${hotel?.rating || 'N/A'}</span>
-          </div>
+          ${priceHtml}
+          ${ratingHtml}
         </div>
         <div class="travel-card-title text-white">
-          <h4 class="text-xl font-bold">${hotel?.name || ''}</h4>
+          <h4 class="text-xl font-bold flex items-center space-x-2">
+            <span>${name}</span>
+          </h4>
+        </div>
+        <div class="travel-card-overlay">
+          <div class="travel-card-details text-gray-200">
+            ${description ? `<p class=\"text-sm line-clamp-3 mb-3\">${description}</p>` : ''}
+            <div class="flex items-center justify-between mt-2">
+              ${website ? `<a href=\"${website}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"visit-website text-blue-300 hover:underline text-sm font-medium\">Visit Website</a>` : `<span></span>`}
+              ${mapLink ? `<a href=\"${mapLink}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hotel-map-link ml-4\" title=\"Open in Google Maps\" aria-label=\"Open hotel in Google Maps\"><i class=\"fas fa-map-marker-alt\"></i></a>` : ''}
+            </div>
+            <div class="flex flex-wrap gap-2 mt-3">
+              ${amenitiesHtml}
+            </div>
+          </div>
         </div>
       </div>
     `;
