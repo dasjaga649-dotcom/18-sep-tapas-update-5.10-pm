@@ -631,57 +631,6 @@ const ChatApp: React.FC = () => {
 
 
 
-      const initSourceDropdown = (row: HTMLElement) => {
-        const input = row.querySelector('.source-input') as HTMLInputElement | null;
-        const dropdown = row.querySelector('.source-dropdown') as HTMLElement | null;
-        const listEl = row.querySelector('.source-options') as HTMLElement | null;
-        if (!input || !dropdown || !listEl) return;
-        const popular = [
-          { label: 'New York, USA', code: 'JFK', sub: 'John F. Kennedy International Airport' },
-          { label: 'Los Angeles, USA', code: 'LAX', sub: 'Los Angeles International Airport' },
-          { label: 'Mumbai, India', code: 'BOM', sub: 'Chhatrapati Shivaji International Airport' },
-          { label: 'New Delhi, India', code: 'DEL', sub: 'Indira Gandhi International Airport' },
-          { label: 'Bangkok, Thailand', code: 'BKK', sub: 'Suvarnabhumi Airport' },
-          { label: 'Bengaluru, India', code: 'BLR', sub: 'Kempegowda International Airport' },
-          { label: 'Pune, India', code: 'PNQ', sub: 'Pune Airport' },
-          { label: 'San Francisco, USA', code: 'SFO', sub: 'San Francisco International Airport' }
-        ];
-        const render = (items: typeof popular) => {
-          listEl.innerHTML = items.map(it => `
-            <li class="source-option px-4 py-3 hover:bg-gray-50 cursor-pointer flex justify-between items-start">
-              <div>
-                <div class="font-medium text-gray-800">${it.label}</div>
-                <div class="text-xs text-gray-500">${it.sub}</div>
-              </div>
-              <div class="text-sm text-gray-600 font-semibold ml-4 flex-shrink-0">${it.code}</div>
-            </li>
-          `).join('');
-        };
-        render(popular);
-        const open = () => dropdown.classList.remove('hidden');
-        const close = () => dropdown.classList.add('hidden');
-        input.addEventListener('focus', open);
-        input.addEventListener('input', () => {
-          const q = input.value.trim().toLowerCase();
-          if (!q) { render(popular); return; }
-          const filtered = popular.filter(p => p.label.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
-          render(filtered.length ? filtered : popular);
-          open();
-        });
-        listEl.addEventListener('click', (ev) => {
-          const li = (ev.target as HTMLElement).closest('.source-option') as HTMLElement | null;
-          if (!li) return;
-          const codeEl = li.querySelector('.text-sm') as HTMLElement | null;
-          const selCode = codeEl ? codeEl.textContent?.trim() : null;
-          if (selCode) {
-            input.value = selCode;
-            (input as any).dataset.selectedLabel = (li.querySelector('.font-medium') as HTMLElement)?.textContent || '';
-          }
-          close();
-          input.focus();
-        });
-        document.addEventListener('click', (e) => { if (!row.contains(e.target as Node)) close(); });
-      };
 
       const attachQuickReplyListeners = () => {
         const buttons = document.querySelectorAll('.quick-reply-button');
