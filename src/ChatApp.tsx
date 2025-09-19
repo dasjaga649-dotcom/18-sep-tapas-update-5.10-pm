@@ -475,21 +475,23 @@ const ChatApp: React.FC = () => {
           const yEl = yearList?.querySelector(`[data-value="${selectedYear}"]`) as HTMLElement | null; yEl?.scrollIntoView({behavior:'smooth', block:'center'});
         };
 
-        const handleScroll = (list: any, setter: (v:number)=>void) => {
+        const handleScroll = (list: HTMLElement & { scrollTimeout?: any }, setter: (v:number)=>void) => {
           clearTimeout(list.scrollTimeout);
           list.scrollTimeout = setTimeout(() => {
-            const listItems = Array.from(list.children).filter((li: any) => li.dataset && li.dataset.value);
-            if (!listItems.length) return;
-            let closestItem = listItems[0];
+            const listItems = Array.from(list.children) as HTMLElement[];
+            const validItems = listItems.filter((li) => (li as HTMLElement).dataset && (li as HTMLElement).dataset.value);
+            if (!validItems.length) return;
+            let closestItem: HTMLElement = validItems[0];
             let minDistance = Infinity;
             const listRect = list.getBoundingClientRect();
-            listItems.forEach((item: any) => {
+            validItems.forEach((item: HTMLElement) => {
               const rect = item.getBoundingClientRect();
               const distance = Math.abs((rect.top + rect.bottom)/2 - (listRect.top + listRect.bottom)/2);
               if (distance < minDistance) { minDistance = distance; closestItem = item; }
             });
-            if (closestItem && closestItem.dataset.value) {
-              const value = parseInt(closestItem.dataset.value, 10);
+            const dataVal = (closestItem.dataset || ({} as any)).value;
+            if (closestItem && dataVal) {
+              const value = parseInt(dataVal, 10);
               setter(value);
               updateDateFields(); updateHighlightPosition(); updateSelectedClasses();
             }
